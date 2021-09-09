@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 # Local
-import utils
+import .utils as utils
 
 
 def rgb_to_ycbcr(image):
