@@ -3,10 +3,16 @@
 This is a pytorch implementation of differentiable jpeg compression algorithm.  This work is based on the discussion in this [paper](https://machine-learning-and-security.github.io/papers/mlsec17_paper_54.pdf).  The work relies heavily on the tensorflow implementation in this [repository](https://github.com/rshin/differentiable-jpeg)
 
 ## Requirements
-- Pytorch 1.0.0
-- numpy 1.15.4
+- PyTorch
+- NumPy
 
-## Use
+## Installation
+
+```bash
+python -m pip install git+git://github.com/cxy1997/DiffJPEG.git
+```
+
+## Usage
 
 DiffJPEG functions as a standard pytorch module/layer.  To use, first import the layer and then initialize with the desired parameters:
 - differentaible(bool): If true uses custom differentiable rounding function, if false uses standrard torch.round
