@@ -151,12 +151,16 @@ class compress_jpeg(nn.Module):
     Ouput:
         compressed(dict(tensor)): batch x h*w/64 x 8 x 8
     """
-    def __init__(self, rounding=torch.round, factor=1):
+    def __init__(self, rounding=torch.round, subsample=True, factor=1):
         super(compress_jpeg, self).__init__()
-        self.l1 = nn.Sequential(
-            rgb_to_ycbcr_jpeg(),
-            chroma_subsampling()
-        )
+        if subsample:
+            self.l1 = nn.Sequential(
+                rgb_to_ycbcr_jpeg(),
+                chroma_subsampling()
+            )
+        else:
+            self.l1 = rgb_to_ycbcr_jpeg()
+        self.subsample = subsample
         self.l2 = nn.Sequential(
             block_splitting(),
             dct_8x8()
@@ -164,16 +168,23 @@ class compress_jpeg(nn.Module):
         self.c_quantize = c_quantize(rounding=rounding, factor=factor)
         self.y_quantize = y_quantize(rounding=rounding, factor=factor)
 
-    def forward(self, image):
-        y, cb, cr = self.l1(image*255)
+    def forward(self, image, quantize=True):
+        if self.subsample:
+            y, cb, cr = self.l1(image*255)
+        else:
+            x = self.l1(image*255)
+            y, cb, cr = torch.split(x, 1, dim=3)
         components = {'y': y, 'cb': cb, 'cr': cr}
         for k in components.keys():
             comp = self.l2(components[k])
-            if k in ('cb', 'cr'):
-                comp = self.c_quantize(comp)
-            else:
-                comp = self.y_quantize(comp)
-
+            if quantize:
+                if k in ('cb', 'cr'):
+                    comp = self.c_quantize(comp)
+                else:
+                    comp = self.y_quantize(comp)
             components[k] = comp
 
         return components['y'], components['cb'], components['cr']
+
+    def quantize(self, y, cb, cr):
+        return self.y_quantize(y), self.c_quantize(cb), self.c_quantize(cr)

@@ -147,15 +147,15 @@ class decompress_jpeg(nn.Module):
     Ouput:
         image(tensor): batch x 3 x height x width
     """
-    def __init__(self, height, width, rounding=torch.round, factor=1):
+    def __init__(self, height, width, rounding=torch.round, subsample=True, factor=1):
         super(decompress_jpeg, self).__init__()
         self.c_dequantize = c_dequantize(factor=factor)
         self.y_dequantize = y_dequantize(factor=factor)
         self.idct = idct_8x8()
         self.merging = block_merging()
-        self.chroma = chroma_upsampling()
+        self.chroma = chroma_upsampling() if subsample else lambda y, cb, cr: torch.cat([y.unsqueeze(3), cb.unsqueeze(3), cr.unsqueeze(3)], dim=3)
         self.colors = ycbcr_to_rgb_jpeg()
-        
+        self.subsample = subsample 
         self.height, self.width = height, width
         
     def forward(self, y, cb, cr):
@@ -163,11 +163,13 @@ class decompress_jpeg(nn.Module):
         for k in components.keys():
             if k in ('cb', 'cr'):
                 comp = self.c_dequantize(components[k])
-                height, width = int(self.height/2), int(self.width/2)                
+                if self.subsample:
+                    height, width = int(self.height/2), int(self.width/2)                
             else:
                 comp = self.y_dequantize(components[k])
                 height, width = self.height, self.width                
             comp = self.idct(comp)
+            #print(k, comp.shape)
             components[k] = self.merging(comp, height, width)
             #
         image = self.chroma(components['y'], components['cb'], components['cr'])

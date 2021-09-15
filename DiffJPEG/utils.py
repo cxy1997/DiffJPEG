@@ -43,3 +43,24 @@ def quality_to_factor(quality):
     else:
         quality = 200. - quality*2
     return quality / 100.
+
+
+class DiffRoundFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        outputs = torch.round(x)
+        ctx.save_for_backward(x, outputs)
+        return outputs
+
+    @staticmethod
+    def backward(ctx, grad_outputs):
+        x, outputs = ctx.saved_tensors
+        return grad_outputs * (x - outputs) ** 2
+
+
+class DiffRound(torch.nn.Module):
+    def __init__(self):
+        super(DiffRound, self).__init__()
+
+    def forward(self, x):
+        return DiffRoundFunction.apply(x)
